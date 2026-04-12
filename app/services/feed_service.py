@@ -13,7 +13,7 @@ class _DecimalEncoder(json.JSONEncoder):
 
 
 from app.models.social import Like, Comment, CollectionItem, Collection, Follow
-from app.models.tuan_readonly import User, Recipe
+from app.models.legacy_models import User, Recipe
 from app.schemas.feed import RecipeSocialMeta, AuthorProfile
 from app.metrics import (
     feed_enrich_latency_seconds,
