@@ -22,7 +22,6 @@ class AuthorProfile(BaseModel):
     id: int
     name: str | None
     avatar_id: int | None
-    bio: str | None
     follower_count: int
 
 
