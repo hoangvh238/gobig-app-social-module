@@ -1,59 +1,57 @@
 version: "3.9"
 
 services:
-app:
+  social-api:
     build: .
-    container_name: gobigblog_app
+    container_name: gobig-social-api
     restart: unless-stopped
     ports:
-     - "3001:3001"
+      - "8001:8001"
     env_file:
-     - .env
+      - .env
     environment:
-     # Override to point at local postgres & redis in this compose file
-     DATABASE_URL: /
-     REDIS_URL: redis://redis:6379
-     NEXT_PUBLIC_PAYLOAD_URL: http://localhost:3001
-     PORT: 3001
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set}
+      REDIS_URL: redis://redis:6379
+      APP_PORT: 8001
     depends_on:
-     postgres:
+      postgres:
         condition: service_healthy
-     redis:
+      redis:
         condition: service_healthy
-    volumes:
-     - ./.env:/app/.env:ro
 
-postgres:
+  postgres:
     image: postgres:15-alpine
-    container_name: gobigblog_postgres
+    container_name: gobig-social-postgres
     restart: unless-stopped
     ports:
-     - "5432:5432"
+      - "5432:5432"
     environment:
-     POSTGRES_USER: gobig
-     POSTGRES_PASSWORD: gobig
-     POSTGRES_DB: gobig
+      POSTGRES_USER: ${POSTGRES_USER:-gobig}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gobig}
+      POSTGRES_DB: ${POSTGRES_DB:-gobig}
     volumes:
-     - pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
     healthcheck:
-     test: ["CMD-SHELL", "pg_isready -U gobig -d gobig || exit 1"]
-     interval: 10s
-     timeout: 5s
-     retries: 5
+      test: ["CMD-SHELL", "pg_isready -U gobig -d gobig || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-redis:
+  redis:
     image: redis:7-alpine
-    container_name: gobigblog_redis
+    container_name: gobig-social-redis
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
     volumes:
-     - redisdata:/data
+      - redisdata:/data
     healthcheck:
-     test: ["CMD", "redis-cli", "ping"]
-     interval: 10s
-     timeout: 5s
-     retries: 5
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
-pgdata:
-redisdata:
+  pgdata:
+  redisdata:

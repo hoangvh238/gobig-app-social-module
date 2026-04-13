@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 import asyncio
 
-from app.models.tuan_readonly import Base
+from app.models.legacy_models import Base
 from app.models.social import *
 
 config = context.config

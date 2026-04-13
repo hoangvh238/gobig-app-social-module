@@ -85,6 +85,17 @@ class FeedService:
 
         missing_ids = [rid for rid in recipe_ids if rid not in cached_data]
 
+        # If user_id is provided, fetch their block/mute lists so we can exclude those authors
+        blocked_author_ids: set[int] = set()
+        if user_id:
+            block_query = text("""
+                SELECT blocked_id FROM blocks WHERE blocker_id = :uid
+                UNION
+                SELECT muted_id FROM mutes WHERE muter_id = :uid
+            """)
+            block_result = await db.execute(block_query, {"uid": user_id})
+            blocked_author_ids = {row[0] for row in block_result.fetchall()}
+
         if missing_ids:
             query = text("""
                 SELECT
@@ -101,7 +112,6 @@ class FeedService:
                     u.id as author_id,
                     u.name as author_name,
                     u.avatar_id as author_avatar_id,
-                    u.bio as author_bio,
                     COALESCE(lc.like_count, 0) as like_count,
                     COALESCE(cc.comment_count, 0) as comment_count,
                     COALESCE(fc.follower_count, 0) as follower_count,
@@ -140,6 +150,10 @@ class FeedService:
             rows = result.fetchall()
 
             for row in rows:
+                # Skip recipes from blocked/muted authors
+                if row.author_id and row.author_id in blocked_author_ids:
+                    continue
+
                 # Parse tags from the concatenated string
                 tags = []
                 if row.tags:
@@ -160,7 +174,6 @@ class FeedService:
                         "id": row.author_id,
                         "name": row.author_name,
                         "avatar_id": row.author_avatar_id,
-                        "bio": row.author_bio,
                         "follower_count": int(row.follower_count)
                     },
                     "like_count": int(row.like_count),
@@ -186,16 +199,21 @@ class FeedService:
         if frugal_mode and recipe_ids:
             frugal_hashtags = EMOTION_CONTEXT_HASHTAG_MAPPING.get("frugal_mode", [])
             if frugal_hashtags:
-                hashtag_placeholders = ','.join([f"'{tag}'" for tag in frugal_hashtags])
-                frugal_query = text(f"""
+                frugal_query = text("""
                     SELECT DISTINCT rh.recipe_id
                     FROM recipe_hashtags rh
                     JOIN hashtags h ON rh.hashtag_id = h.id
                     WHERE rh.recipe_id IN :recipe_ids
-                    AND LOWER(h.name) IN ({hashtag_placeholders})
+                    AND LOWER(h.name) IN :frugal_tags
                 """)
 
-                frugal_result = await db.execute(frugal_query.bindparams(bindparam("recipe_ids", expanding=True)), {"recipe_ids": recipe_ids})
+                frugal_result = await db.execute(
+                    frugal_query.bindparams(
+                        bindparam("recipe_ids", expanding=True),
+                        bindparam("frugal_tags", expanding=True),
+                    ),
+                    {"recipe_ids": recipe_ids, "frugal_tags": [t.lower() for t in frugal_hashtags]}
+                )
                 frugal_rows = frugal_result.fetchall()
                 frugal_recipe_ids.update(row[0] for row in frugal_rows)
 
@@ -224,6 +242,11 @@ class FeedService:
         for recipe_id in recipe_ids:
             data = cached_data.get(recipe_id)
             if not data:
+                continue
+
+            # Filter out cached results from blocked/muted authors
+            author_id = data.get("author", {}).get("id")
+            if author_id and author_id in blocked_author_ids:
                 continue
 
             result.append(RecipeSocialMeta(
