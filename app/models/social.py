@@ -2,7 +2,7 @@ from datetime import datetime, date
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import (
     Integer, String, Text, Boolean, ForeignKey, TIMESTAMP, Date,
-    JSON, ARRAY, VARCHAR,
+    JSON, ARRAY, VARCHAR, BigInteger,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
@@ -41,6 +41,26 @@ class BoardItemSlot(str, enum.Enum):
     tonight = "tonight"
     this_week = "this_week"
     later = "later"
+
+
+class StoryType(str, enum.Enum):
+    cooking_moment = "cooking_moment"
+    prep_pack = "prep_pack"
+    challenge_entry = "challenge_entry"
+
+
+class StoryStatus(str, enum.Enum):
+    pending = "pending"
+    confirmed = "confirmed"
+    rejected = "rejected"
+
+
+class PotluckEventType(str, enum.Enum):
+    rsvp = "rsvp"
+    invite_sent = "invite_sent"
+    buddy_suggested = "buddy_suggested"
+    ping_sent = "ping_sent"
+    state_updated = "state_updated"
 
 
 # ── follows ──────────────────────────────────────────────────────────
@@ -286,4 +306,48 @@ class BoardItem(Base):
     recipe_id: Mapped[int] = mapped_column(Integer, ForeignKey("recipes.id", ondelete="CASCADE"), nullable=False)
     slot: Mapped[str] = mapped_column(VARCHAR, nullable=False)
     display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
+
+
+# ── stories ──────────────────────────────────────────────────────────
+# DDL: id SERIAL, user_id FK, b2_object_key, story_type, emotion_preset,
+#      challenge_id FK, challenge_type, time_preference, file_size_bytes,
+#      status, expires_at, created_at
+class Story(Base):
+    __tablename__ = "stories"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    b2_object_key: Mapped[str] = mapped_column(VARCHAR, nullable=False)
+    story_type: Mapped[str] = mapped_column(VARCHAR, nullable=False)
+    emotion_preset: Mapped[str | None] = mapped_column(VARCHAR)
+    challenge_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("social_challenges.id", ondelete="SET NULL"))
+    challenge_type: Mapped[str | None] = mapped_column(VARCHAR)
+    time_preference: Mapped[str | None] = mapped_column(VARCHAR)
+    file_size_bytes: Mapped[int | None] = mapped_column(BigInteger)
+    status: Mapped[str] = mapped_column(VARCHAR, nullable=False, default="pending")
+    expires_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
+
+
+# ── story_recipe_links ───────────────────────────────────────────────
+# DDL: story_id, recipe_id (composite PK), display_order
+class StoryRecipeLink(Base):
+    __tablename__ = "story_recipe_links"
+
+    story_id: Mapped[int] = mapped_column(Integer, ForeignKey("stories.id", ondelete="CASCADE"), primary_key=True)
+    recipe_id: Mapped[int] = mapped_column(Integer, ForeignKey("recipes.id", ondelete="CASCADE"), primary_key=True)
+    display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+# ── potluck_social_events ────────────────────────────────────────────
+# DDL: id SERIAL, session_id, event_type, actor_id FK, payload_json JSONB, created_at
+class PotluckSocialEvent(Base):
+    __tablename__ = "potluck_social_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    session_id: Mapped[str] = mapped_column(VARCHAR, nullable=False)
+    event_type: Mapped[str] = mapped_column(VARCHAR, nullable=False)
+    actor_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    payload_json: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="'{}'::jsonb")
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())

@@ -1,0 +1,83 @@
+"""Update stories table for direct URL storage
+
+Revision ID: 0004
+Revises: 0003
+Create Date: 2026-04-21 13:40:00.000000
+
+"""
+from alembic import op
+
+revision = '0004'
+down_revision = '0003'
+branch_labels = None
+depends_on = None
+
+
+def upgrade() -> None:
+    # Add new columns as nullable first
+    op.execute("""
+        ALTER TABLE stories
+        ADD COLUMN url VARCHAR,
+        ADD COLUMN key VARCHAR,
+        ADD COLUMN size BIGINT,
+        ADD COLUMN mimetype VARCHAR
+    """)
+
+    # Migrate existing data: b2_object_key -> key, set dummy values for url/size/mimetype
+    op.execute("""
+        UPDATE stories
+        SET key = b2_object_key,
+            url = 'https://placeholder.url/' || b2_object_key,
+            size = COALESCE(file_size_bytes, 1000000),
+            mimetype = 'video/mp4'
+        WHERE b2_object_key IS NOT NULL
+    """)
+
+    # Make new columns NOT NULL after migration
+    op.execute("""
+        ALTER TABLE stories
+        ALTER COLUMN url SET NOT NULL,
+        ALTER COLUMN key SET NOT NULL,
+        ALTER COLUMN size SET NOT NULL,
+        ALTER COLUMN mimetype SET NOT NULL
+    """)
+
+    # Drop old columns
+    op.execute("ALTER TABLE stories DROP COLUMN b2_object_key")
+    op.execute("ALTER TABLE stories DROP COLUMN file_size_bytes")
+
+    # Update size constraint
+    op.execute("""
+        ALTER TABLE stories DROP CONSTRAINT IF EXISTS chk_stories_size
+    """)
+    op.execute("""
+        ALTER TABLE stories
+        ADD CONSTRAINT chk_stories_size CHECK (size > 0 AND size <= 52428800)
+    """)
+
+
+def downgrade() -> None:
+    op.execute("""
+        ALTER TABLE stories
+        ADD COLUMN b2_object_key VARCHAR,
+        ADD COLUMN file_size_bytes BIGINT
+    """)
+
+    op.execute("""
+        UPDATE stories
+        SET b2_object_key = key,
+            file_size_bytes = size
+    """)
+
+    op.execute("""
+        ALTER TABLE stories
+        ALTER COLUMN b2_object_key SET NOT NULL
+    """)
+
+    op.execute("""
+        ALTER TABLE stories
+        DROP COLUMN url,
+        DROP COLUMN key,
+        DROP COLUMN size,
+        DROP COLUMN mimetype
+    """)

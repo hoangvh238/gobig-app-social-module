@@ -4,11 +4,19 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 import asyncio
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from app.models.legacy_models import Base
 from app.models.social import *
 
 config = context.config
+
+# Override sqlalchemy.url with DATABASE_URL from environment
+if not config.get_main_option("sqlalchemy.url"):
+    config.set_main_option("sqlalchemy.url", os.getenv("DATABASE_URL", ""))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

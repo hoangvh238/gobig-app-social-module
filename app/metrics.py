@@ -27,6 +27,36 @@ redis_cache_misses_total = Counter(
 )
 
 
+# Story metrics
+story_upload_latency_seconds = Histogram(
+    'story_upload_latency_seconds',
+    'Story initiate/confirm latency in seconds',
+    ['operation'],
+    buckets=[0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0]
+)
+
+story_requests_total = Counter(
+    'story_requests_total',
+    'Total story operations',
+    ['operation', 'status']
+)
+
+# Potluck metrics
+potluck_requests_total = Counter(
+    'potluck_requests_total',
+    'Total potluck social operations',
+    ['operation']
+)
+
+# TasteSearch metrics
+taste_search_latency_seconds = Histogram(
+    'taste_search_latency_seconds',
+    'TasteSearch query latency in seconds',
+    ['taste_tier'],
+    buckets=[0.01, 0.025, 0.05, 0.1, 0.2, 0.5, 1.0]
+)
+
+
 def metrics_endpoint():
     """
     Prometheus metrics endpoint

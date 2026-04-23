@@ -21,8 +21,7 @@ class FeedEnrichRequest(BaseModel):
 class AuthorProfile(BaseModel):
     id: int
     name: str | None
-    avatar_id: int | None
-    follower_count: int
+    avatar_id: str | None  # Avatar URL
 
 
 class RecipeSocialMeta(BaseModel):

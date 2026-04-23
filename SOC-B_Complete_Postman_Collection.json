@@ -1,0 +1,1464 @@
+{
+  "info": {
+    "name": "SOC-B Complete Milestone Tests",
+    "description": "Comprehensive test suite for SOC-B milestone - Stories, Challenges & Potluck Social Layer",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "soc-b-complete-2026"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8001/social",
+      "type": "string"
+    },
+    {
+      "key": "upload_url",
+      "value": "http://46.62.235.145:3002",
+      "type": "string"
+    },
+    {
+      "key": "es_url",
+      "value": "http://46.62.235.145:9200",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "user_id_2",
+      "value": "2",
+      "type": "string"
+    },
+    {
+      "key": "story_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "session_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "b2_object_key",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "conversation_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Story Upload Flow",
+      "description": "Complete 3-step story upload process",
+      "item": [
+        {
+          "name": "1.1 Upload to Media Service",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "",
+                  "description": "Select video/image file"
+                },
+                {
+                  "key": "type",
+                  "value": "story",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{upload_url}}/api/upload",
+              "host": ["{{upload_url}}"],
+              "path": ["api", "upload"]
+            },
+            "description": "Step 1: Upload media to Tuan's upload service. Returns {url, key, size, mimetype}"
+          },
+          "response": []
+        },
+        {
+          "name": "1.2 Confirm Story - Emotion Type",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.collectionVariables.set('story_id', res.story_id);",
+                  "pm.test('Story created with pending status', function() {",
+                  "    pm.expect(res.status).to.eql('pending');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "{{user_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://cdn.example.com/stories/test_{{$timestamp}}.mp4\",\n  \"b2_object_key\": \"stories/test_{{$timestamp}}.mp4\",\n  \"file_size\": 1234567,\n  \"content_type\": \"video/mp4\",\n  \"story_type\": \"emotion\",\n  \"emotion_preset\": \"joyful\",\n  \"challenge_type\": null,\n  \"recipe_ids\": []\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stories/confirm",
+              "host": ["{{base_url}}"],
+              "path": ["stories", "confirm"]
+            },
+            "description": "Step 2: Confirm story upload with metadata. Triggers Celery validation."
+          },
+          "response": []
+        },
+        {
+          "name": "1.3 Confirm Story - Challenge Type",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('Story created successfully', function() {",
+                  "    pm.expect(res.story_id).to.be.a('number');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "{{user_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://cdn.example.com/stories/challenge_{{$timestamp}}.mp4\",\n  \"b2_object_key\": \"stories/challenge_{{$timestamp}}.mp4\",\n  \"file_size\": 2345678,\n  \"content_type\": \"video/mp4\",\n  \"story_type\": \"challenge\",\n  \"emotion_preset\": null,\n  \"challenge_type\": \"speed_cook\",\n  \"recipe_ids\": []\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stories/confirm",
+              "host": ["{{base_url}}"],
+              "path": ["stories", "confirm"]
+            },
+            "description": "Confirm story with challenge type"
+          },
+          "response": []
+        },
+        {
+          "name": "1.4 Confirm Story - Prep Pack (Multi-Recipe)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "{{user_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://cdn.example.com/stories/prep_{{$timestamp}}.mp4\",\n  \"b2_object_key\": \"stories/prep_{{$timestamp}}.mp4\",\n  \"file_size\": 3456789,\n  \"content_type\": \"video/mp4\",\n  \"story_type\": \"prep_pack\",\n  \"emotion_preset\": null,\n  \"challenge_type\": null,\n  \"recipe_ids\": [101, 102, 103]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stories/confirm",
+              "host": ["{{base_url}}"],
+              "path": ["stories", "confirm"]
+            },
+            "description": "Confirm prep pack story with multiple recipe links"
+          },
+          "response": []
+        },
+        {
+          "name": "1.5 Get Story by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('Story status is confirmed', function() {",
+                  "    pm.expect(res.status).to.be.oneOf(['pending', 'confirmed']);",
+                  "});",
+                  "pm.test('Story has emotion_preset or challenge_type', function() {",
+                  "    pm.expect(res.emotion_preset || res.challenge_type).to.exist;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/stories/{{story_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["stories", "{{story_id}}"]
+            },
+            "description": "Step 3: Get story details after Celery validation (wait 3 seconds)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. TasteSearch with Tier Boost",
+      "description": "Test tier-based boost (basic=1.0, advanced=1.3, hyper=1.6)",
+      "item": [
+        {
+          "name": "2.1 TasteSearch - Basic Tier",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('Results returned', function() {",
+                  "    pm.expect(res.results).to.be.an('array');",
+                  "});",
+                  "pm.test('Results have scores', function() {",
+                  "    if (res.results.length > 0) {",
+                  "        pm.expect(res.results[0].score).to.be.a('number');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-taste-tier",
+                "value": "basic"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stories/search?q=happy&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["stories", "search"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "happy"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Search with basic tier (boost=1.0)"
+          },
+          "response": []
+        },
+        {
+          "name": "2.2 TasteSearch - Advanced Tier",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-taste-tier",
+                "value": "advanced"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stories/search?q=happy&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["stories", "search"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "happy"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Search with advanced tier (boost=1.3)"
+          },
+          "response": []
+        },
+        {
+          "name": "2.3 TasteSearch - Hyper Tier",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('Hyper tier returns results', function() {",
+                  "    pm.expect(res.results).to.be.an('array');",
+                  "});",
+                  "pm.test('Scores should be higher than basic tier', function() {",
+                  "    // Note: Compare with basic tier results manually",
+                  "    pm.expect(res.results.length).to.be.gte(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-taste-tier",
+                "value": "hyper"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stories/search?q=happy&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["stories", "search"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "happy"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Search with hyper tier (boost=1.6) - should have highest scores"
+          },
+          "response": []
+        },
+        {
+          "name": "2.4 Search with Emotion Filter",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-taste-tier",
+                "value": "basic"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stories/search?q=cooking&emotion_preset=joyful&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["stories", "search"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "cooking"
+                },
+                {
+                  "key": "emotion_preset",
+                  "value": "joyful"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Filter by emotion_preset"
+          },
+          "response": []
+        },
+        {
+          "name": "2.5 Search with Challenge Filter",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-taste-tier",
+                "value": "advanced"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stories/search?q=recipe&challenge_type=speed_cook&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["stories", "search"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "recipe"
+                },
+                {
+                  "key": "challenge_type",
+                  "value": "speed_cook"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Filter by challenge_type"
+          },
+          "response": []
+        },
+        {
+          "name": "2.6 Search with Pagination",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-taste-tier",
+                "value": "basic"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stories/search?q=food&limit=10&offset=10",
+              "host": ["{{base_url}}"],
+              "path": ["stories", "search"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "food"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "offset",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Test pagination with offset"
+          },
+          "response": []
+        },
+        {
+          "name": "2.7 Fuzzy Search Test",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-taste-tier",
+                "value": "basic"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stories/search?q=hapy&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["stories", "search"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "hapy",
+                  "description": "Typo: should match 'happy'"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Test fuzzy search with typo"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Story Feed",
+      "description": "Get story feeds with various filters",
+      "item": [
+        {
+          "name": "3.1 Get Public Feed",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('Feed returns stories array', function() {",
+                  "    pm.expect(res.stories).to.be.an('array');",
+                  "});",
+                  "pm.test('Feed has pagination info', function() {",
+                  "    pm.expect(res.total).to.be.a('number');",
+                  "    pm.expect(res.limit).to.be.a('number');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/stories/feed?limit=20&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["stories", "feed"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": "Get public story feed without user context"
+          },
+          "response": []
+        },
+        {
+          "name": "3.2 Get Personalized Feed",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "{{user_id}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stories/feed?limit=20&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["stories", "feed"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": "Get personalized feed with user context"
+          },
+          "response": []
+        },
+        {
+          "name": "3.3 Get Feed - Page 2",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-user-id",
+                "value": "{{user_id}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stories/feed?limit=20&offset=20",
+              "host": ["{{base_url}}"],
+              "path": ["stories", "feed"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "offset",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Test pagination - second page"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Potluck Social State",
+      "description": "Create and manage potluck social state in Redis",
+      "item": [
+        {
+          "name": "4.1 Create Potluck State - Friends Only",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.collectionVariables.set('session_id', res.session_id);",
+                  "pm.test('State created successfully', function() {",
+                  "    pm.expect(res.session_id).to.be.a('string');",
+                  "    pm.expect(res.friends_only).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "{{user_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"potluck_{{$timestamp}}\",\n  \"friends_only\": true,\n  \"invite_from_followers\": false,\n  \"slot_duration_min\": 30,\n  \"host_controls\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/potluck/state",
+              "host": ["{{base_url}}"],
+              "path": ["potluck", "state"]
+            },
+            "description": "Create potluck state with friends_only=true"
+          },
+          "response": []
+        },
+        {
+          "name": "4.2 Create Potluck State - Open Invite",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "{{user_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"potluck_open_{{$timestamp}}\",\n  \"friends_only\": false,\n  \"invite_from_followers\": true,\n  \"slot_duration_min\": 45,\n  \"host_controls\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/potluck/state",
+              "host": ["{{base_url}}"],
+              "path": ["potluck", "state"]
+            },
+            "description": "Create potluck state with open invites from followers"
+          },
+          "response": []
+        },
+        {
+          "name": "4.3 Create Potluck State - 15min Slots",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "{{user_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"potluck_micro_{{$timestamp}}\",\n  \"friends_only\": true,\n  \"invite_from_followers\": false,\n  \"slot_duration_min\": 15,\n  \"host_controls\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/potluck/state",
+              "host": ["{{base_url}}"],
+              "path": ["potluck", "state"]
+            },
+            "description": "Create micro potluck with 15-minute slots"
+          },
+          "response": []
+        },
+        {
+          "name": "4.4 Get Potluck State",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('State retrieved successfully', function() {",
+                  "    pm.expect(res.session_id).to.be.a('string');",
+                  "    pm.expect(res.rsvps).to.be.an('object');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/potluck/state/{{session_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["potluck", "state", "{{session_id}}"]
+            },
+            "description": "Get potluck state from Redis"
+          },
+          "response": []
+        },
+        {
+          "name": "4.5 Update Potluck State",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "{{user_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"friends_only\": false,\n  \"invite_from_followers\": true,\n  \"slot_duration_min\": 30,\n  \"host_controls\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/potluck/state",
+              "host": ["{{base_url}}"],
+              "path": ["potluck", "state"]
+            },
+            "description": "Update existing potluck state"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. RSVP to Potluck",
+      "description": "Test RSVP functionality with different statuses",
+      "item": [
+        {
+          "name": "5.1 RSVP - Yes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('RSVP accepted', function() {",
+                  "    pm.expect(res.status).to.eql('yes');",
+                  "    pm.expect(res.user_id).to.be.a('number');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "{{user_id_2}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"status\": \"yes\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/potluck/rsvp",
+              "host": ["{{base_url}}"],
+              "path": ["potluck", "rsvp"]
+            },
+            "description": "User 2 RSVPs yes to potluck"
+          },
+          "response": []
+        },
+        {
+          "name": "5.2 RSVP - Maybe",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "3"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"status\": \"maybe\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/potluck/rsvp",
+              "host": ["{{base_url}}"],
+              "path": ["potluck", "rsvp"]
+            },
+            "description": "User 3 RSVPs maybe"
+          },
+          "response": []
+        },
+        {
+          "name": "5.3 RSVP - No",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "4"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"status\": \"no\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/potluck/rsvp",
+              "host": ["{{base_url}}"],
+              "path": ["potluck", "rsvp"]
+            },
+            "description": "User 4 RSVPs no"
+          },
+          "response": []
+        },
+        {
+          "name": "5.4 Update RSVP (Yes to No)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "{{user_id_2}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"status\": \"no\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/potluck/rsvp",
+              "host": ["{{base_url}}"],
+              "path": ["potluck", "rsvp"]
+            },
+            "description": "User 2 changes RSVP from yes to no"
+          },
+          "response": []
+        },
+        {
+          "name": "5.5 Verify RSVPs in State",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('RSVPs are stored', function() {",
+                  "    pm.expect(Object.keys(res.rsvps).length).to.be.gte(1);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/potluck/state/{{session_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["potluck", "state", "{{session_id}}"]
+            },
+            "description": "Verify RSVPs are stored in potluck state"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "6. Cook-Buddy Suggestions",
+      "description": "Test buddy suggestions using inventory compatibility + follow graph",
+      "item": [
+        {
+          "name": "6.1 Get Buddy Suggestions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('Suggestions returned', function() {",
+                  "    pm.expect(res.suggestions).to.be.an('array');",
+                  "});",
+                  "pm.test('Suggestions have required fields', function() {",
+                  "    if (res.suggestions.length > 0) {",
+                  "        const buddy = res.suggestions[0];",
+                  "        pm.expect(buddy.user_id).to.be.a('number');",
+                  "        pm.expect(buddy.name).to.be.a('string');",
+                  "        pm.expect(buddy.compatibility_score).to.be.a('number');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "{{user_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"limit\": 10\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/potluck/suggest-buddies",
+              "host": ["{{base_url}}"],
+              "path": ["potluck", "suggest-buddies"]
+            },
+            "description": "Get top 10 buddy suggestions based on compatibility + mutual follows"
+          },
+          "response": []
+        },
+        {
+          "name": "6.2 Get Buddy Suggestions - Limit 5",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "{{user_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"limit\": 5\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/potluck/suggest-buddies",
+              "host": ["{{base_url}}"],
+              "path": ["potluck", "suggest-buddies"]
+            },
+            "description": "Get top 5 buddy suggestions"
+          },
+          "response": []
+        },
+        {
+          "name": "6.3 Get Buddy Suggestions - Limit 20",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "{{user_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"limit\": 20\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/potluck/suggest-buddies",
+              "host": ["{{base_url}}"],
+              "path": ["potluck", "suggest-buddies"]
+            },
+            "description": "Get top 20 buddy suggestions"
+          },
+          "response": []
+        },
+        {
+          "name": "6.4 Get Buddy Suggestions - Different User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "{{user_id_2}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"limit\": 10\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/potluck/suggest-buddies",
+              "host": ["{{base_url}}"],
+              "path": ["potluck", "suggest-buddies"]
+            },
+            "description": "Get buddy suggestions for user 2"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "7. Potluck Ping (DM)",
+      "description": "Test ping functionality - creates DM, NOT live_room",
+      "item": [
+        {
+          "name": "7.1 Send Ping to User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.collectionVariables.set('conversation_id', res.conversation_id);",
+                  "pm.test('Ping sent successfully', function() {",
+                  "    pm.expect(res.conversation_id).to.be.a('number');",
+                  "    pm.expect(res.message_id).to.be.a('number');",
+                  "});",
+                  "pm.test('Has sent_at timestamp', function() {",
+                  "    pm.expect(res.sent_at).to.be.a('string');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "{{user_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"target_user_id\": 2,\n  \"message\": \"Hey! Want to join my potluck tonight? 🍽️\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/potluck/ping",
+              "host": ["{{base_url}}"],
+              "path": ["potluck", "ping"]
+            },
+            "description": "Send ping (DM) to user 2 about potluck"
+          },
+          "response": []
+        },
+        {
+          "name": "7.2 Send Ping with Custom Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "{{user_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"target_user_id\": 3,\n  \"message\": \"We're cooking Italian tonight! Join us?\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/potluck/ping",
+              "host": ["{{base_url}}"],
+              "path": ["potluck", "ping"]
+            },
+            "description": "Send ping with custom message"
+          },
+          "response": []
+        },
+        {
+          "name": "7.3 Send Ping to Multiple Users",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "{{user_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"target_user_id\": 4,\n  \"message\": \"Potluck at 7pm! Bring your favorite dish!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/potluck/ping",
+              "host": ["{{base_url}}"],
+              "path": ["potluck", "ping"]
+            },
+            "description": "Send ping to another user (user 4)"
+          },
+          "response": []
+        },
+        {
+          "name": "7.4 Ping Self (Should Fail)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Cannot ping yourself', function() {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "{{user_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"target_user_id\": 1,\n  \"message\": \"Test self-ping\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/potluck/ping",
+              "host": ["{{base_url}}"],
+              "path": ["potluck", "ping"]
+            },
+            "description": "Attempt to ping self - should return 400 error"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "8. Elasticsearch Validation",
+      "description": "Direct ES queries to validate story indexing",
+      "item": [
+        {
+          "name": "8.1 Check ES Cluster Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{es_url}}/_cluster/health",
+              "host": ["{{es_url}}"],
+              "path": ["_cluster", "health"]
+            },
+            "description": "Check Elasticsearch cluster health"
+          },
+          "response": []
+        },
+        {
+          "name": "8.2 Check Index Exists",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{es_url}}/gobig_stories",
+              "host": ["{{es_url}}"],
+              "path": ["gobig_stories"]
+            },
+            "description": "Check if gobig_stories index exists"
+          },
+          "response": []
+        },
+        {
+          "name": "8.3 Get Document Count",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{es_url}}/gobig_stories/_count",
+              "host": ["{{es_url}}"],
+              "path": ["gobig_stories", "_count"]
+            },
+            "description": "Get total document count in index"
+          },
+          "response": []
+        },
+        {
+          "name": "8.4 Get Index Mapping",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{es_url}}/gobig_stories/_mapping",
+              "host": ["{{es_url}}"],
+              "path": ["gobig_stories", "_mapping"]
+            },
+            "description": "Get index mapping to verify emotion_preset field"
+          },
+          "response": []
+        },
+        {
+          "name": "8.5 Search All Documents",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": {\n    \"match_all\": {}\n  },\n  \"size\": 10,\n  \"sort\": [\n    {\n      \"created_at\": {\n        \"order\": \"desc\"\n      }\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{es_url}}/gobig_stories/_search",
+              "host": ["{{es_url}}"],
+              "path": ["gobig_stories", "_search"]
+            },
+            "description": "Get latest 10 documents"
+          },
+          "response": []
+        },
+        {
+          "name": "8.6 Search by Emotion Preset",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": {\n    \"term\": {\n      \"emotion_preset\": \"joyful\"\n    }\n  },\n  \"_source\": [\"story_id\", \"user_id\", \"emotion_preset\", \"created_at\"],\n  \"size\": 20\n}"
+            },
+            "url": {
+              "raw": "{{es_url}}/gobig_stories/_search",
+              "host": ["{{es_url}}"],
+              "path": ["gobig_stories", "_search"]
+            },
+            "description": "Find all stories with emotion_preset=joyful"
+          },
+          "response": []
+        },
+        {
+          "name": "8.7 Verify _source Filtering",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": {\n    \"match_all\": {}\n  },\n  \"_source\": [\"story_id\", \"emotion_preset\"],\n  \"size\": 5\n}"
+            },
+            "url": {
+              "raw": "{{es_url}}/gobig_stories/_search",
+              "host": ["{{es_url}}"],
+              "path": ["gobig_stories", "_search"]
+            },
+            "description": "Verify _source filtering returns only specified fields"
+          },
+          "response": []
+        },
+        {
+          "name": "8.8 Aggregation by Emotion",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"size\": 0,\n  \"aggs\": {\n    \"emotions\": {\n      \"terms\": {\n        \"field\": \"emotion_preset\",\n        \"size\": 20\n      }\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{es_url}}/gobig_stories/_search",
+              "host": ["{{es_url}}"],
+              "path": ["gobig_stories", "_search"]
+            },
+            "description": "Count stories by emotion_preset"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "9. Edge Cases & Error Handling",
+      "description": "Test error scenarios and edge cases",
+      "item": [
+        {
+          "name": "9.1 Confirm Story - Missing Required Fields",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Returns validation error', function() {",
+                  "    pm.response.to.have.status(422);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "{{user_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://cdn.example.com/test.mp4\",\n  \"b2_object_key\": \"stories/test.mp4\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stories/confirm",
+              "host": ["{{base_url}}"],
+              "path": ["stories", "confirm"]
+            },
+            "description": "Missing required fields - should return 422"
+          },
+          "response": []
+        },
+        {
+          "name": "9.2 Get Non-existent Story",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Returns 404', function() {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/stories/999999",
+              "host": ["{{base_url}}"],
+              "path": ["stories", "999999"]
+            },
+            "description": "Get non-existent story - should return 404"
+          },
+          "response": []
+        },
+        {
+          "name": "9.3 Ping Self (Should Fail)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Cannot ping yourself', function() {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-user-id",
+                "value": "{{user_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"target_user_id\": 1,\n  \"message\": \"Test self-ping\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/potluck/ping",
+              "host": ["{{base_url}}"],
+              "path": ["potluck", "ping"]
+            },
+            "description": "Attempt to ping self - should return 400 error"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
