@@ -21,14 +21,6 @@ from app.services.es_client import ESClient
 from app.metrics import story_upload_latency_seconds, story_requests_total, taste_search_latency_seconds
 
 
-# TasteProfile boost multipliers — read from JWT, zero DB queries
-TASTE_TIER_BOOST = {
-    "basic": 1.0,
-    "advanced": 1.3,
-    "hyper": 1.6,
-}
-
-
 class StoryService:
 
     @staticmethod
@@ -143,18 +135,15 @@ class StoryService:
         taste_tier: str,
     ) -> TasteSearchResponse:
         """
-        Fuzzy ES search with TasteProfile boost.
-        Tier from JWT — zero DB queries per boost.
+        Fuzzy ES search for stories.
+        Tier from JWT — reserved for future use.
         """
         start = time.time()
-
-        boost = TASTE_TIER_BOOST.get(taste_tier, 1.0)
 
         results, total = await ESClient.search_stories(
             query=params.q,
             emotion_preset=params.emotion_preset,
             challenge_type=params.challenge_type,
-            boost_factor=boost,
             limit=params.limit,
             offset=params.offset,
         )

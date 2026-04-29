@@ -77,14 +77,12 @@ class ESClient:
         query: str,
         emotion_preset: str | None = None,
         challenge_type: str | None = None,
-        boost_factor: float = 1.0,
         limit: int = 20,
         offset: int = 0,
     ) -> tuple[list[dict], int]:
         """
-        Fuzzy search with TasteProfile boost.
-        boost_factor: basic=1.0, advanced=1.3, hyper=1.6
-        Zero DB queries — tier comes from JWT.
+        Fuzzy search for stories.
+        Zero DB queries — filters applied directly in ES.
 
         CRITICAL: Use _source filtering to avoid fetching huge ES responses.
         Only fetch fields we actually return to client.
@@ -110,22 +108,11 @@ class ESClient:
         if challenge_type:
             filters.append({"term": {"challenge_type": challenge_type}})
 
-        # function_score wraps the query to apply TasteProfile boost
         body = {
             "query": {
-                "function_score": {
-                    "query": {
-                        "bool": {
-                            "must": must,
-                            "filter": filters,
-                        }
-                    },
-                    "functions": [
-                        {
-                            "weight": boost_factor,
-                        }
-                    ],
-                    "boost_mode": "multiply",
+                "bool": {
+                    "must": must,
+                    "filter": filters,
                 }
             },
             "_source": [
@@ -137,7 +124,7 @@ class ESClient:
                 "emotion_preset",
                 "challenge_type",
                 "created_at",
-            ],  # ONLY fetch fields we need — avoid token waste
+            ],
             "from": offset,
             "size": limit,
             "sort": [{"_score": "desc"}, {"created_at": "desc"}],
