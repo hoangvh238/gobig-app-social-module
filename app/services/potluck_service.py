@@ -207,6 +207,7 @@ class PotluckService:
                     AND f2.following_id = f1.follower_id
                 LEFT JOIN users u ON f1.following_id = u.id
                 WHERE f1.follower_id = :uid
+                ORDER BY f1.following_id
                 LIMIT :lim
             """),
             {"uid": user_id, "lim": request.limit * 3},  # fetch more, rank later
