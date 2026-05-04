@@ -11,6 +11,7 @@ from app.schemas.potluck import (
     RSVPRequest, RSVPResponse,
     BuddySuggestRequest, BuddySuggestResponse, BuddySuggestion,
     PotluckPingRequest, PotluckPingResponse,
+    InviteUsersRequest, InviteUsersResponse,
 )
 from app.metrics import potluck_requests_total
 
@@ -154,9 +155,9 @@ class PotluckService:
 
                         elif not invite_from_followers:
                             # If invite_from_followers is false, only explicitly invited users can RSVP
-                            # Check if user has been invited (has existing RSVP entry or is in invite list)
-                            existing_rsvp = data.get(f"rsvp:{user_id}")
-                            if not existing_rsvp:
+                            # Check if user has been invited via invite API
+                            is_invited = data.get(f"invited:{user_id}")
+                            if not is_invited:
                                 from fastapi import HTTPException
                                 raise HTTPException(status_code=403, detail="You must be invited to RSVP")
 
@@ -179,6 +180,62 @@ class PotluckService:
             session_id=request.session_id,
             user_id=user_id,
             status=request.status,
+        )
+
+    @staticmethod
+    async def invite_users(
+        host_id: int,
+        request: InviteUsersRequest,
+        db: AsyncSession,
+    ) -> InviteUsersResponse:
+        """Host invites users to potluck session. Sets invited:{user_id} flags in Redis."""
+        potluck_requests_total.labels(operation="invite_users").inc()
+
+        # Verify user is the host of this session
+        if REDIS_AVAILABLE:
+            core_key = f"potluck:{request.session_id}"
+            host_id_str = await redis_pool.hget(core_key, "host_id")
+            if not host_id_str:
+                from fastapi import HTTPException
+                raise HTTPException(status_code=404, detail="Session not found")
+            if int(host_id_str) != host_id:
+                from fastapi import HTTPException
+                raise HTTPException(status_code=403, detail="Only session host can invite users")
+
+        invited = []
+        failed = []
+
+        # Set invited flags in Redis
+        if REDIS_AVAILABLE:
+            key = _key(request.session_id)
+            for user_id in request.user_ids:
+                try:
+                    await redis_pool.hset(key, f"invited:{user_id}", "1")
+                    invited.append(user_id)
+                except Exception as e:
+                    print(f"Error inviting user {user_id}: {e}")
+                    failed.append(user_id)
+        else:
+            invited = request.user_ids
+
+        # Audit event
+        await db.execute(
+            text("""
+                INSERT INTO potluck_social_events (session_id, event_type, actor_id, payload_json)
+                VALUES (:sid, 'users_invited', :uid, :payload)
+            """),
+            {
+                "sid": request.session_id,
+                "uid": host_id,
+                "payload": json.dumps({"invited": invited, "failed": failed}),
+            },
+        )
+        await db.commit()
+
+        return InviteUsersResponse(
+            session_id=request.session_id,
+            invited=invited,
+            failed=failed,
         )
 
     @staticmethod

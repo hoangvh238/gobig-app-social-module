@@ -74,3 +74,16 @@ class PotluckPingResponse(BaseModel):
     sent_to: list[int]  # User IDs that received the message
     failed: list[int]  # User IDs that failed (blocked/muted/self)
     message_ids: list[int]  # Message IDs created
+
+
+# ── Invite Users ─────────────────────────────────────────────────────
+
+class InviteUsersRequest(BaseModel):
+    session_id: str = Field(..., min_length=1, max_length=100)
+    user_ids: list[int] = Field(..., min_items=1, max_items=50)
+
+
+class InviteUsersResponse(BaseModel):
+    session_id: str
+    invited: list[int]
+    failed: list[int]

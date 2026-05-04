@@ -12,6 +12,7 @@ from app.schemas.potluck import (
     RSVPRequest, RSVPResponse,
     BuddySuggestRequest, BuddySuggestResponse,
     PotluckPingRequest, PotluckPingResponse,
+    InviteUsersRequest, InviteUsersResponse,
 )
 from app.services.potluck_service import PotluckService
 
@@ -75,3 +76,16 @@ async def potluck_ping(
     Creates a message — NEVER creates a live room.
     """
     return await PotluckService.ping(user_id, request, db)
+
+
+@router.post("/potluck/invite", response_model=InviteUsersResponse)
+async def invite_users(
+    request: InviteUsersRequest,
+    user_id: int = Depends(_extract_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Host invites users to a potluck session.
+    Only invited users can RSVP when invite_from_followers is false.
+    """
+    return await PotluckService.invite_users(user_id, request, db)
