@@ -114,7 +114,6 @@ class FeedService:
                     u.avatar_id as author_avatar_id,
                     COALESCE(lc.like_count, 0) as like_count,
                     COALESCE(cc.comment_count, 0) as comment_count,
-                    COALESCE(fc.follower_count, 0) as follower_count,
                     STRING_AGG(h.name, ',') as tags
                 FROM recipes r
                 LEFT JOIN users u ON r.author_id = u.id
@@ -130,20 +129,10 @@ class FeedService:
                     WHERE recipe_id IN :recipe_ids AND is_deleted = FALSE
                     GROUP BY recipe_id
                 ) cc ON r.id = cc.recipe_id
-                LEFT JOIN (
-                    SELECT f.following_id, COUNT(*) as follower_count
-                    FROM follows f
-                    WHERE f.following_id IN (
-                        SELECT DISTINCT r2.author_id
-                        FROM recipes r2
-                        WHERE r2.id IN :recipe_ids
-                    )
-                    GROUP BY f.following_id
-                ) fc ON u.id = fc.following_id
                 LEFT JOIN recipe_hashtags rh ON r.id = rh.recipe_id
                 LEFT JOIN hashtags h ON rh.hashtag_id = h.id
                 WHERE r.id IN :recipe_ids
-                GROUP BY r.id, u.id, lc.like_count, cc.comment_count, fc.follower_count
+                GROUP BY r.id, u.id, lc.like_count, cc.comment_count
             """)
 
             result = await db.execute(query.bindparams(bindparam("recipe_ids", expanding=True)), {"recipe_ids": missing_ids})
@@ -173,8 +162,7 @@ class FeedService:
                     "author": {
                         "id": row.author_id,
                         "name": row.author_name,
-                        "avatar_id": row.author_avatar_id,
-                        "follower_count": int(row.follower_count)
+                        "avatar_id": f"https://i.pravatar.cc/200?img={row.author_avatar_id}" if row.author_avatar_id else None
                     },
                     "like_count": int(row.like_count),
                     "comment_count": int(row.comment_count),
