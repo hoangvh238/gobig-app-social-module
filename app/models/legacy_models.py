@@ -14,6 +14,10 @@ class User(Base):
     name: Mapped[str | None] = mapped_column(String)
     email: Mapped[str | None] = mapped_column(String)
     avatar_id: Mapped[int | None] = mapped_column(Integer)
+    follower_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    following_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    recipe_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    streak_hash: Mapped[str | None] = mapped_column(String)
 
 
 class Recipe(Base):
@@ -25,3 +29,4 @@ class Recipe(Base):
     slug: Mapped[str | None] = mapped_column(String)
     status: Mapped[str | None] = mapped_column(String)
     author_id: Mapped[int | None] = mapped_column(Integer)
+    like_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")

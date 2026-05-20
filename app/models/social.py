@@ -99,7 +99,7 @@ class Comment(Base):
 
 
 # ── collections ──────────────────────────────────────────────────────
-# DDL: id SERIAL, user_id, title VARCHAR, description VARCHAR, created_at, updated_at
+# DDL: id SERIAL, user_id, title VARCHAR, description VARCHAR, offline_sync BOOLEAN, created_at, updated_at
 class Collection(Base):
     __tablename__ = "collections"
 
@@ -107,6 +107,7 @@ class Collection(Base):
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     title: Mapped[str] = mapped_column(VARCHAR, nullable=False)
     description: Mapped[str | None] = mapped_column(VARCHAR)
+    offline_sync: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
 
