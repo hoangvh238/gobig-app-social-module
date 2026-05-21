@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 from app.models.social import Collection, CollectionItem
@@ -63,7 +64,7 @@ class CollectionService:
         if data.offline_sync is not None:
             collection.offline_sync = data.offline_sync
 
-        collection.updated_at = func.now()
+        collection.updated_at = datetime.now(timezone.utc)
         await self.db.flush()
 
         return CollectionResponse(

@@ -1,13 +1,14 @@
+import json
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text, and_
-from app.models.social import GroupBoard, BoardItem
+from app.models.social import GroupBoard
 from app.models.legacy_models import Recipe
 from app.schemas.board import (
     BoardCreate,
     BoardUpdate,
     BoardItemUpdate,
     BoardResponse,
-    BoardItemsResponse
+    BoardItemsResponse,
 )
 
 
@@ -16,34 +17,20 @@ class BoardService:
         self.db = db
 
     async def create_board(self, user_id: int, data: BoardCreate) -> BoardResponse:
-        board = GroupBoard(
-            user_id=user_id,
-            board_name=data.board_name
-        )
+        board = GroupBoard(user_id=user_id, board_name=data.board_name, compact_json={})
         self.db.add(board)
         await self.db.flush()
         await self.db.refresh(board)
-
         return BoardResponse(
             id=board.id,
             user_id=board.user_id,
             board_name=board.board_name,
-            created_at=board.created_at
+            created_at=board.created_at,
         )
 
-    async def update_board(
-        self,
-        board_id: int,
-        user_id: int,
-        data: BoardUpdate
-    ) -> BoardResponse | None:
+    async def update_board(self, board_id: int, user_id: int, data: BoardUpdate) -> BoardResponse | None:
         result = await self.db.execute(
-            select(GroupBoard).where(
-                and_(
-                    GroupBoard.id == board_id,
-                    GroupBoard.user_id == user_id
-                )
-            )
+            select(GroupBoard).where(and_(GroupBoard.id == board_id, GroupBoard.user_id == user_id))
         )
         board = result.scalar_one_or_none()
         if not board:
@@ -56,17 +43,12 @@ class BoardService:
             id=board.id,
             user_id=board.user_id,
             board_name=board.board_name,
-            created_at=board.created_at
+            created_at=board.created_at,
         )
 
     async def delete_board(self, board_id: int, user_id: int) -> bool:
         result = await self.db.execute(
-            select(GroupBoard).where(
-                and_(
-                    GroupBoard.id == board_id,
-                    GroupBoard.user_id == user_id
-                )
-            )
+            select(GroupBoard).where(and_(GroupBoard.id == board_id, GroupBoard.user_id == user_id))
         )
         board = result.scalar_one_or_none()
         if not board:
@@ -76,88 +58,52 @@ class BoardService:
         await self.db.flush()
         return True
 
-    async def update_board_items(
-        self,
-        board_id: int,
-        user_id: int,
-        data: BoardItemUpdate
-    ) -> bool:
-        result = await self.db.execute(
-            select(GroupBoard).where(
-                and_(
-                    GroupBoard.id == board_id,
-                    GroupBoard.user_id == user_id
+    async def update_board_items(self, board_id: int, user_id: int, data: BoardItemUpdate) -> bool:
+        # Fetch recipe details for the new slot items (read, not a write).
+        recipes_result = await self.db.execute(
+            select(Recipe.id, Recipe.title, Recipe.slug)
+            .where(Recipe.id.in_(data.recipe_ids))
+        )
+        recipe_map = {r.id: {"recipe_id": r.id, "title": r.title, "slug": r.slug}
+                      for r in recipes_result}
+        slot_data = [recipe_map[rid] for rid in data.recipe_ids if rid in recipe_map]
+
+        # Single UPDATE: jsonb_set preserves other slots untouched.
+        update_result = await self.db.execute(
+            text("""
+                UPDATE group_boards
+                SET compact_json = jsonb_set(
+                    COALESCE(compact_json, '{}'),
+                    ARRAY[:slot],
+                    :slot_data::jsonb
                 )
-            )
+                WHERE id = :board_id AND user_id = :user_id
+                RETURNING id
+            """),
+            {
+                "slot": data.slot,
+                "slot_data": json.dumps(slot_data),
+                "board_id": board_id,
+                "user_id": user_id,
+            }
         )
-        board = result.scalar_one_or_none()
-        if not board:
-            return False
-
-        await self.db.execute(
-            text("DELETE FROM board_items WHERE board_id = :board_id AND slot = :slot"),
-            {"board_id": board_id, "slot": data.slot}
-        )
-
-        for idx, recipe_id in enumerate(data.recipe_ids):
-            item = BoardItem(
-                board_id=board_id,
-                recipe_id=recipe_id,
-                slot=data.slot,
-                display_order=idx
-            )
-            self.db.add(item)
-
         await self.db.flush()
-        return True
+        return update_result.scalar_one_or_none() is not None
 
-    async def get_board_items(
-        self,
-        board_id: int,
-        user_id: int
-    ) -> BoardItemsResponse | None:
+    async def get_board_items(self, board_id: int, user_id: int) -> BoardItemsResponse | None:
         result = await self.db.execute(
-            select(GroupBoard).where(
-                and_(
-                    GroupBoard.id == board_id,
-                    GroupBoard.user_id == user_id
-                )
-            )
+            select(GroupBoard.compact_json)
+            .where(and_(GroupBoard.id == board_id, GroupBoard.user_id == user_id))
         )
-        board = result.scalar_one_or_none()
-        if not board:
+        row = result.scalar_one_or_none()
+        if row is None:
             return None
 
-        items_result = await self.db.execute(
-            select(BoardItem, Recipe)
-            .join(Recipe, BoardItem.recipe_id == Recipe.id)
-            .where(BoardItem.board_id == board_id)
-            .order_by(BoardItem.slot, BoardItem.display_order)
-        )
-        items_data = items_result.all()
-
-        tonight = []
-        this_week = []
-        later = []
-
-        for item, recipe in items_data:
-            recipe_dict = {
-                "recipe_id": recipe.id,
-                "title": recipe.title,
-                "slug": recipe.slug
-            }
-
-            if item.slot == "tonight":
-                tonight.append(recipe_dict)
-            elif item.slot == "this_week":
-                this_week.append(recipe_dict)
-            elif item.slot == "later":
-                later.append(recipe_dict)
-
+        data = row or {}
         return BoardItemsResponse(
-            tonight=tonight,
-            this_week=this_week,
-            later=later
+            tonight=data.get("tonight", []),
+            this_week=data.get("this_week", []),
+            later=data.get("later", []),
         )
 
     async def list_boards(self, user_id: int) -> list[BoardResponse]:
@@ -173,7 +119,7 @@ class BoardService:
                 id=board.id,
                 user_id=board.user_id,
                 board_name=board.board_name,
-                created_at=board.created_at
+                created_at=board.created_at,
             )
             for board in boards
         ]

@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     # External services
     storage_service_url: str
     upload_service_url: str  # Media upload service
+    moderation_service_url: str = "" 
     celery_broker_url: str
     elasticsearch_url: str
     es_story_index: str = "gobig_stories"

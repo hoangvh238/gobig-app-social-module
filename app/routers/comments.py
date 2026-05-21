@@ -1,14 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
+from app.auth import get_current_user_id
 from app.schemas.comment import CommentCreate, CommentUpdate, CommentResponse, CommentListResponse
 from app.services.comment_service import CommentService
 
 router = APIRouter(prefix="/comments", tags=["comments"])
-
-
-def get_current_user_id() -> int:
-    return 1
 
 
 @router.post("", response_model=CommentResponse, status_code=201)

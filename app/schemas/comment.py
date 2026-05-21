@@ -22,8 +22,9 @@ class CommentResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     user_name: str | None = None
-    user_avatar_id: int | None = None
+    user_avatar_url: str | None = None
     reply_count: int = 0
+    swap_hint: str | None = None  
 
     class Config:
         from_attributes = True

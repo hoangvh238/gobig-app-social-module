@@ -5,7 +5,7 @@ class UserProfileResponse(BaseModel):
     id: int
     name: str | None
     email: str | None
-    avatar_id: int | None
+    avatar_url: str | None
     follower_count: int
     following_count: int
     recipe_count: int
@@ -15,6 +15,5 @@ class UserProfileResponse(BaseModel):
         from_attributes = True
 
 
-class PresignedUrlResponse(BaseModel):
-    upload_url: str
-    avatar_id: int
+class AvatarUpdateRequest(BaseModel):
+    url: str

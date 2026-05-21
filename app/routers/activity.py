@@ -1,14 +1,11 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
+from app.auth import get_current_user_id
 from app.schemas.activity import ActivityListResponse
 from app.services.activity_service import ActivityService
 
 router = APIRouter(prefix="/activity", tags=["activity"])
-
-
-def get_current_user_id() -> int:
-    return 1
 
 
 @router.get("/me", response_model=ActivityListResponse)

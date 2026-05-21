@@ -111,7 +111,7 @@ class FeedService:
                     r.description,
                     u.id as author_id,
                     u.name as author_name,
-                    u.avatar_id as author_avatar_id,
+                    u.avatar_url as author_avatar_url,
                     COALESCE(lc.like_count, 0) as like_count,
                     COALESCE(cc.comment_count, 0) as comment_count,
                     STRING_AGG(h.name, ',') as tags
@@ -162,7 +162,7 @@ class FeedService:
                     "author": {
                         "id": row.author_id,
                         "name": row.author_name,
-                        "avatar_id": f"https://i.pravatar.cc/200?img={row.author_avatar_id}" if row.author_avatar_id else None
+                        "avatar_id": row.author_avatar_url
                     },
                     "like_count": int(row.like_count),
                     "comment_count": int(row.comment_count),

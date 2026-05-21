@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
+from app.auth import get_current_user_id
 from app.schemas.collection import (
     CollectionCreate,
     CollectionUpdate,
@@ -11,10 +12,6 @@ from app.schemas.collection import (
 from app.services.collection_service import CollectionService
 
 router = APIRouter(prefix="/collections", tags=["collections"])
-
-
-def get_current_user_id() -> int:
-    return 1
 
 
 @router.post("", response_model=CollectionResponse, status_code=201)

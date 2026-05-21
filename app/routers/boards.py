@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
+from app.auth import get_current_user_id
 from app.schemas.board import (
     BoardCreate,
     BoardUpdate,
@@ -11,10 +12,6 @@ from app.schemas.board import (
 from app.services.board_service import BoardService
 
 router = APIRouter(prefix="/boards", tags=["boards"])
-
-
-def get_current_user_id() -> int:
-    return 1
 
 
 @router.post("", response_model=BoardResponse, status_code=201)

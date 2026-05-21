@@ -1,14 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
+from app.auth import get_current_user_id
 from app.schemas.like import LikeResponse
 from app.services.like_service import LikeService
 
 router = APIRouter(prefix="/likes", tags=["likes"])
-
-
-def get_current_user_id() -> int:
-    return 1
 
 
 @router.post("/{recipe_id}", response_model=LikeResponse)
