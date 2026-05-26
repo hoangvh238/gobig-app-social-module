@@ -22,6 +22,7 @@ from app.metrics import (
     redis_cache_misses_total
 )
 from app.emotion_context_config import EMOTION_CONTEXT_HASHTAG_MAPPING
+from app.services.safety import get_blocked_ids, get_muted_ids
 import time
 
 try:
@@ -85,16 +86,11 @@ class FeedService:
 
         missing_ids = [rid for rid in recipe_ids if rid not in cached_data]
 
-        # If user_id is provided, fetch their block/mute lists so we can exclude those authors
         blocked_author_ids: set[int] = set()
         if user_id:
-            block_query = text("""
-                SELECT blocked_id FROM blocks WHERE blocker_id = :uid
-                UNION
-                SELECT muted_id FROM mutes WHERE muter_id = :uid
-            """)
-            block_result = await db.execute(block_query, {"uid": user_id})
-            blocked_author_ids = {row[0] for row in block_result.fetchall()}
+            blocked_author_ids = (
+                await get_blocked_ids(user_id, db) | await get_muted_ids(user_id, db)
+            )
 
         if missing_ids:
             query = text("""

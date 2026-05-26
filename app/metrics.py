@@ -56,6 +56,12 @@ taste_search_latency_seconds = Histogram(
     buckets=[0.01, 0.025, 0.05, 0.1, 0.2, 0.5, 1.0]
 )
 
+# DM rate limit counter
+dm_rate_limit_hits_total = Counter(
+    'dm_rate_limit_hits_total',
+    'Total number of DM rate limit violations (WS closed)'
+)
+
 
 def metrics_endpoint():
     """

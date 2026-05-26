@@ -119,7 +119,8 @@ class CommentService:
         self,
         recipe_id: int,
         cursor: int | None = None,
-        limit: int = 20
+        limit: int = 20,
+        blocked_ids: set[int] | None = None,
     ) -> CommentListResponse:
         query = (
             select(Comment, User)
@@ -136,6 +137,8 @@ class CommentService:
         )
         if cursor:
             query = query.where(Comment.id < cursor)
+        if blocked_ids:
+            query = query.where(Comment.user_id.not_in(blocked_ids))
 
         result = await self.db.execute(query)
         rows = result.all()
@@ -178,7 +181,8 @@ class CommentService:
         self,
         parent_id: int,
         cursor: int | None = None,
-        limit: int = 20
+        limit: int = 20,
+        blocked_ids: set[int] | None = None,
     ) -> CommentListResponse:
         query = (
             select(Comment, User)
@@ -195,6 +199,8 @@ class CommentService:
 
         if cursor:
             query = query.where(Comment.id > cursor)
+        if blocked_ids:
+            query = query.where(Comment.user_id.not_in(blocked_ids))
 
         result = await self.db.execute(query)
         rows = result.all()

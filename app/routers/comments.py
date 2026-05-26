@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.auth import get_current_user_id
 from app.schemas.comment import CommentCreate, CommentUpdate, CommentResponse, CommentListResponse
 from app.services.comment_service import CommentService
+from app.services.safety import get_blocked_ids
 
 router = APIRouter(prefix="/comments", tags=["comments"])
 
@@ -54,9 +55,11 @@ async def list_comments(
     cursor: int | None = Query(None),
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
+    x_user_id: int | None = Header(alias="X-User-Id", default=None),
 ):
+    blocked_ids = await get_blocked_ids(x_user_id, db) if x_user_id and x_user_id > 0 else set()
     service = CommentService(db)
-    return await service.list_comments(recipe_id, cursor, limit)
+    return await service.list_comments(recipe_id, cursor, limit, blocked_ids or None)
 
 
 @router.get("/{parent_id}/replies", response_model=CommentListResponse)
@@ -65,9 +68,11 @@ async def list_replies(
     cursor: int | None = Query(None),
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
+    x_user_id: int | None = Header(alias="X-User-Id", default=None),
 ):
+    blocked_ids = await get_blocked_ids(x_user_id, db) if x_user_id and x_user_id > 0 else set()
     service = CommentService(db)
-    return await service.list_replies(parent_id, cursor, limit)
+    return await service.list_replies(parent_id, cursor, limit, blocked_ids or None)
 
 
 @router.post("/{comment_id}/flag", status_code=204)

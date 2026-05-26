@@ -4,6 +4,7 @@ from app.database import get_db
 from app.auth import get_current_user_id
 from app.schemas.activity import ActivityListResponse
 from app.services.activity_service import ActivityService
+from app.services.safety import get_blocked_ids
 
 router = APIRouter(prefix="/activity", tags=["activity"])
 
@@ -15,5 +16,6 @@ async def get_my_activities(
     db: AsyncSession = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ):
+    blocked_ids = await get_blocked_ids(user_id, db)
     service = ActivityService(db)
-    return await service.get_user_activities(user_id, cursor, limit)
+    return await service.get_user_activities(user_id, cursor, limit, blocked_ids or None)

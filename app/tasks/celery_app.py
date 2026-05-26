@@ -19,6 +19,12 @@ celery_app.conf.update(
     enable_utc=True,
     task_track_started=True,
     task_default_queue="social",
+    beat_schedule={
+        "flush-safety-events-every-60s": {
+            "task": "tasks.flush_safety_events",
+            "schedule": 60.0,
+        },
+    },
 )
 
 celery_app.autodiscover_tasks(["app.tasks"])

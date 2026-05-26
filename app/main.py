@@ -12,6 +12,8 @@ from app.routers import users
 from app.routers import collections
 from app.routers import hashtags
 from app.routers import boards
+from app.routers import moderation
+from app.routers import dm
 from app.metrics import metrics_endpoint
 from app.config import settings
 
@@ -55,6 +57,8 @@ app.include_router(users.router, prefix="/social", tags=["users"])
 app.include_router(collections.router, prefix="/social", tags=["collections"])
 app.include_router(hashtags.router, prefix="/social", tags=["hashtags"])
 app.include_router(boards.router, prefix="/social", tags=["boards"])
+app.include_router(moderation.router, prefix="/social", tags=["moderation"])
+app.include_router(dm.router, prefix="/social", tags=["dm"])
 
 
 @app.get("/health")
