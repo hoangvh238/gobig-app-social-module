@@ -2,7 +2,7 @@ from datetime import datetime, date
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import (
     Integer, String, Text, Boolean, ForeignKey, TIMESTAMP, Date,
-    JSON, ARRAY, VARCHAR, BigInteger,
+    ARRAY, VARCHAR, BigInteger,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
@@ -99,7 +99,7 @@ class Comment(Base):
 
 
 # ── collections ──────────────────────────────────────────────────────
-# DDL: id SERIAL, user_id, title VARCHAR, description VARCHAR, created_at, updated_at
+# DDL: id SERIAL, user_id, title VARCHAR, description VARCHAR, offline_sync BOOLEAN, created_at, updated_at
 class Collection(Base):
     __tablename__ = "collections"
 
@@ -107,6 +107,7 @@ class Collection(Base):
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     title: Mapped[str] = mapped_column(VARCHAR, nullable=False)
     description: Mapped[str | None] = mapped_column(VARCHAR)
+    offline_sync: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
 
@@ -286,26 +287,16 @@ class LiveRoomTemplate(Base):
 
 
 # ── group_boards ─────────────────────────────────────────────────────
-# DDL: id SERIAL, user_id FK, board_name VARCHAR, created_at
+# DDL: id SERIAL, user_id FK, board_name VARCHAR, compact_json JSONB, created_at
+# compact_json schema: {"tonight": [...], "this_week": [...], "later": [...]}
+# Each slot holds recipe dicts with recipe_id/title/slug for zero-join reads.
 class GroupBoard(Base):
     __tablename__ = "group_boards"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     board_name: Mapped[str] = mapped_column(VARCHAR, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
-
-
-# ── board_items ──────────────────────────────────────────────────────
-# DDL: id SERIAL, board_id FK, recipe_id FK, slot VARCHAR, display_order INTEGER, created_at
-class BoardItem(Base):
-    __tablename__ = "board_items"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    board_id: Mapped[int] = mapped_column(Integer, ForeignKey("group_boards.id", ondelete="CASCADE"), nullable=False)
-    recipe_id: Mapped[int] = mapped_column(Integer, ForeignKey("recipes.id", ondelete="CASCADE"), nullable=False)
-    slot: Mapped[str] = mapped_column(VARCHAR, nullable=False)
-    display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    compact_json: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
 
 

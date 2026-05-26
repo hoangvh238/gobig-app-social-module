@@ -257,7 +257,7 @@ class PotluckService:
             text("""
                 SELECT f1.following_id as user_id,
                        u.name as display_name,
-                       u.avatar_id
+                       u.avatar_url
                 FROM follows f1
                 INNER JOIN follows f2
                     ON f1.following_id = f2.follower_id
@@ -300,7 +300,7 @@ class PotluckService:
             suggestions.append(BuddySuggestion(
                 user_id=row.user_id,
                 display_name=row.display_name,
-                avatar_id=f"https://cdn.example.com/avatars/{row.avatar_id}.jpg" if row.avatar_id else None,
+                avatar_id=row.avatar_url,
                 compatibility_score=round(compat, 3),
                 mutual_follows=max_mutual - i,
                 combined_score=round(combined, 3),

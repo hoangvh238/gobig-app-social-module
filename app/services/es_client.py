@@ -153,6 +153,49 @@ class ESClient:
         )
 
     @classmethod
+    async def search_by_hashtag(
+        cls,
+        hashtag: str,
+        cursor: str | None = None,
+        limit: int = 20,
+    ) -> dict:
+        """
+        Search recipes by hashtag using ES index.
+        Returns recipes with cursor-based pagination.
+        """
+        client = cls._get_client()
+
+        body = {
+            "query": {
+                "bool": {
+                    "must": [
+                        {"term": {"hashtags": hashtag}}
+                    ]
+                }
+            },
+            "_source": ["recipe_id", "title", "slug", "author_id"],
+            "size": limit + 1,
+            "sort": [{"recipe_id": "desc"}]
+        }
+
+        if cursor:
+            body["search_after"] = [int(cursor)]
+
+        resp = await client.search(index="recipes", body=body)
+        hits = resp["hits"]["hits"]
+
+        has_more = len(hits) > limit
+        recipes_data = hits[:limit]
+
+        recipes = [hit["_source"] for hit in recipes_data]
+        next_cursor = str(recipes[-1]["recipe_id"]) if has_more and recipes else None
+
+        return {
+            "recipes": recipes,
+            "next_cursor": next_cursor
+        }
+
+    @classmethod
     async def close(cls):
         if cls._client:
             await cls._client.close()
