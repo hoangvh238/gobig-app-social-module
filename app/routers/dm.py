@@ -1,3 +1,4 @@
+import starlette
 import asyncio
 import json
 import time
@@ -39,7 +40,9 @@ async def start_conversation(
     result = await db.execute(
         select(Conversation).where(
             Conversation.participant_ids.op("@>")(
-                pg_array([user_id, data.recipient_id])
+                pg_array([user_id, data.recipient_id]
+            # FIX: THÊM RÀNG BUỘC NÀY Mảng chỉ có 2 thôi 
+                )
             )
         )
     )
@@ -79,6 +82,8 @@ async def ws_chat(
     pubsub = redis_pool.pubsub()
     await pubsub.subscribe(channel)
 
+    # FIX: Biến đếm in-memory rl_count sẽ bị reset mỗi lần user reconnect, cho phép bypass rate limit dễ dàng. Yêu cầu Fix:
+    # Đưa state rate-limit vào Redis để quản lý tập trung:
     rl_window = time.monotonic()
     rl_count = 0
 
