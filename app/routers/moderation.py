@@ -34,6 +34,7 @@ async def create_report(
     await db.refresh(report)
     await db.commit()
 
+    # FIX: apply background task vì hàm này chạy tốn thời gian (max 5s)
     await _push_to_moderation_queue(report)
     await queue_safety_event("report", {
         "report_id": report.id,

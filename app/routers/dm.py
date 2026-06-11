@@ -167,7 +167,7 @@ async def ws_chat(
         except Exception:
             pass
 
-
+# Fix: Websocket trên web ko hỗ trợ truyền custom header đâu. 
 def _auth_from_headers(websocket: WebSocket) -> int | None:
     raw = websocket.headers.get("x-user-id")
     if raw and raw.isdigit():
@@ -198,6 +198,7 @@ async def _mark_read(message_id: int, user_id: int, conversation_id: int, redis_
                 Message.id == message_id,
                 Message.conversation_id == conversation_id,
                 Message.read_at.is_(None),
+                # Message.sender_id != user_id,  # FIX: Xóa dòng này để đảm bảo gửi cho chính mình vẫn được
             )
         )
         msg = result.scalar_one_or_none()

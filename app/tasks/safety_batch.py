@@ -20,11 +20,15 @@ def flush_safety_events() -> None:
     from app.config import settings
 
     r = _redis.from_url(settings.redis_url, decode_responses=True)
-
+    """
+    # FIX: Sử dụng Redis Lock để đảm bảo chỉ có 1 worker chạy task này
+    lock = r.lock("lock:flush_safety_events", timeout=30)
+    """
     events = r.lrange(_BUFFER_KEY, 0, _DRAIN_BATCH - 1)
     if not events:
         return
 
+    # FIX: Xử lý xong mới Trim (vì lỡ crash mà chứ sử lý thì mất record luôn thì sao)
     r.ltrim(_BUFFER_KEY, len(events), -1)
 
     pipe = r.pipeline(transaction=False)
