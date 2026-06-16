@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     story_max_size_bytes: int = 52_428_800  # 50MB
     story_ttl_days: int = 60
 
+    # Streak federation — HMAC key for hashing raw streak counts before exposure
+    streak_secret: str = "change-me-in-production"
+
     class Config:
         env_file = ".env"
 
