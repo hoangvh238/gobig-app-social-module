@@ -1,5 +1,5 @@
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -16,6 +16,7 @@ router = APIRouter(tags=["moderation"])
 @router.post("/reports", response_model=ReportResponse, status_code=201)
 async def create_report(
     data: ReportCreate,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ):
@@ -34,7 +35,8 @@ async def create_report(
     await db.refresh(report)
     await db.commit()
 
-    await _push_to_moderation_queue(report)
+    # Fire-and-forget: HTTP call can take up to 5 s; don't block the 201 response.
+    background_tasks.add_task(_push_to_moderation_queue, report)
     await queue_safety_event("report", {
         "report_id": report.id,
         "reporter_id": user_id,

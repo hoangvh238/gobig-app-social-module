@@ -36,11 +36,13 @@ async def start_conversation(
     if await is_blocked(user_id, data.recipient_id, db):
         raise HTTPException(status_code=403, detail="Blocked")
 
+    # Bidirectional containment (@> AND <@) guarantees exact 2-element match,
+    # order-independent, without false positives from group conversations.
+    participants = pg_array([user_id, data.recipient_id])
     result = await db.execute(
         select(Conversation).where(
-            Conversation.participant_ids.op("@>")(
-                pg_array([user_id, data.recipient_id])
-            )
+            Conversation.participant_ids.op("@>")(participants),
+            Conversation.participant_ids.op("<@")(participants),
         )
     )
     conv = result.scalar_one_or_none()
@@ -59,9 +61,11 @@ async def start_conversation(
 async def ws_chat(
     websocket: WebSocket,
     conversation_id: int = Query(...),
+    user_id: int = Query(...),
 ):
-    user_id = _auth_from_headers(websocket)
-    if not user_id:
+    # Browsers cannot set custom headers on WebSocket connections;
+    # user_id is passed as a query param set by the auth gateway.
+    if user_id <= 0:
         await websocket.close(code=4001)
         return
 
@@ -78,9 +82,6 @@ async def ws_chat(
     channel = f"conv:{conversation_id}"
     pubsub = redis_pool.pubsub()
     await pubsub.subscribe(channel)
-
-    rl_window = time.monotonic()
-    rl_count = 0
 
     async def _redis_to_ws():
         try:
@@ -126,10 +127,13 @@ async def ws_chat(
             if not content:
                 continue
 
-            now = time.monotonic()
-            if now - rl_window >= 60.0:
-                rl_window, rl_count = now, 0
-            rl_count += 1
+            # Redis-backed fixed-window rate limiter keyed by (user, minute).
+            # Survives reconnects; resets cleanly every 60-second window.
+            rl_window = int(time.time()) // 60
+            rl_key = f"dm:rl:{user_id}:{rl_window}"
+            rl_count = await redis_pool.incr(rl_key)
+            if rl_count == 1:
+                await redis_pool.expire(rl_key, 120)
 
             if rl_count > _MAX_MSGS_PER_MINUTE or len(content) > _MAX_CONTENT_LEN:
                 dm_rate_limit_hits_total.inc()
@@ -166,14 +170,6 @@ async def ws_chat(
             await pubsub.unsubscribe(channel)
         except Exception:
             pass
-
-
-def _auth_from_headers(websocket: WebSocket) -> int | None:
-    raw = websocket.headers.get("x-user-id")
-    if raw and raw.isdigit():
-        uid = int(raw)
-        return uid if uid > 0 else None
-    return None
 
 
 async def _persist_message(conversation_id: int, sender_id: int, content: str) -> Message:
