@@ -2,7 +2,6 @@
 Celery beat task: drain live reaction buffer → live_reaction_events table.
 Runs every 30 seconds; never writes per-reaction to DB on the hot path.
 """
-import asyncio
 import json
 import logging
 
@@ -14,19 +13,19 @@ _BUFFER_KEY = "live:reaction_buffer"
 _DRAIN_BATCH = 1000
 
 
-async def _insert_reactions(rows: list[dict]) -> None:
-    from sqlalchemy import text
-    from app.database import AsyncSessionLocal
+def _insert_reactions(rows: list[dict]) -> None:
+    from sqlalchemy import create_engine, text
+    from app.config import settings
 
-    async with AsyncSessionLocal() as session:
-        await session.execute(
+    engine = create_engine(settings.database_url)
+    with engine.begin() as conn:
+        conn.execute(
             text(
                 "INSERT INTO live_reaction_events (room_id, user_id, reaction_type) "
                 "VALUES (:room_id, :user_id, :reaction_type)"
             ),
             rows,
         )
-        await session.commit()
 
 
 @celery_app.task(name="tasks.flush_live_reactions")
@@ -57,5 +56,5 @@ def flush_live_reactions() -> None:
     if not rows:
         return
 
-    asyncio.run(_insert_reactions(rows))
+    _insert_reactions(rows)
     log.info("live_reactions_flushed", extra={"count": len(rows)})
