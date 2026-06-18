@@ -194,6 +194,7 @@ async def _mark_read(message_id: int, user_id: int, conversation_id: int, redis_
                 Message.id == message_id,
                 Message.conversation_id == conversation_id,
                 Message.read_at.is_(None),
+                Message.sender_id != user_id,
             )
         )
         msg = result.scalar_one_or_none()
