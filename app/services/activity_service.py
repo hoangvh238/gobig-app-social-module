@@ -28,7 +28,8 @@ class ActivityService:
         self,
         user_id: int,
         cursor: int | None = None,
-        limit: int = 20
+        limit: int = 20,
+        blocked_ids: set[int] | None = None,
     ) -> ActivityListResponse:
         query = (
             select(Activity)
@@ -39,6 +40,9 @@ class ActivityService:
 
         if cursor:
             query = query.where(Activity.id < cursor)
+
+        if blocked_ids:
+            query = query.where(Activity.actor_id.not_in(blocked_ids))
 
         result = await self.db.execute(query)
         activities_data = result.scalars().all()
