@@ -250,15 +250,22 @@ class SocialChallenge(Base):
 
 
 # ── live_rooms ───────────────────────────────────────────────────────
-# DDL: id SERIAL, creator_id FK, recipe_id FK, room_type VARCHAR, status VARCHAR, created_at
+# DDL: id SERIAL, creator_id FK, recipe_id FK, potluck_id VARCHAR,
+#      room_type VARCHAR, status VARCHAR, template_id FK, emotion_preset,
+#      low_res_first BOOL, audio_only BOOL, created_at
 class LiveRoom(Base):
     __tablename__ = "live_rooms"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     creator_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     recipe_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("recipes.id", ondelete="SET NULL"))
+    potluck_id: Mapped[str | None] = mapped_column(VARCHAR)
     room_type: Mapped[str] = mapped_column(VARCHAR, nullable=False, default="personal")
     status: Mapped[str] = mapped_column(VARCHAR, nullable=False, default="scheduled")
+    template_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("live_room_templates.id", ondelete="SET NULL"))
+    emotion_preset: Mapped[str | None] = mapped_column(VARCHAR)
+    low_res_first: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    audio_only: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
 
 
@@ -276,12 +283,15 @@ class LiveParticipant(Base):
 
 
 # ── live_room_templates ──────────────────────────────────────────────
-# DDL: id SERIAL, name VARCHAR UNIQUE, default_hashtags JSONB, created_at
+# DDL: id SERIAL, name VARCHAR UNIQUE, emotion_preset VARCHAR,
+#      default_slot_min INTEGER, default_hashtags JSONB, created_at
 class LiveRoomTemplate(Base):
     __tablename__ = "live_room_templates"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(VARCHAR, nullable=False, unique=True)
+    emotion_preset: Mapped[str | None] = mapped_column(VARCHAR)
+    default_slot_min: Mapped[int | None] = mapped_column(Integer)
     default_hashtags: Mapped[dict | None] = mapped_column(JSONB, server_default="'[]'::jsonb")
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
 
@@ -329,6 +339,32 @@ class StoryRecipeLink(Base):
     story_id: Mapped[int] = mapped_column(Integer, ForeignKey("stories.id", ondelete="CASCADE"), primary_key=True)
     recipe_id: Mapped[int] = mapped_column(Integer, ForeignKey("recipes.id", ondelete="CASCADE"), primary_key=True)
     display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+# ── live_clip_markers ────────────────────────────────────────────────
+# DDL: id SERIAL, room_id FK, user_id FK, timestamp_s INTEGER, label VARCHAR, created_at
+class LiveClipMarker(Base):
+    __tablename__ = "live_clip_markers"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    room_id: Mapped[int] = mapped_column(Integer, ForeignKey("live_rooms.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    timestamp_s: Mapped[int] = mapped_column(Integer, nullable=False)
+    label: Mapped[str] = mapped_column(VARCHAR, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
+
+
+# ── live_reaction_events ─────────────────────────────────────────────
+# Batch-written every 30s from Redis buffer — zero per-reaction DB writes on hot path.
+# DDL: id SERIAL, room_id FK, user_id FK, reaction_type VARCHAR, created_at
+class LiveReactionEvent(Base):
+    __tablename__ = "live_reaction_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    room_id: Mapped[int] = mapped_column(Integer, ForeignKey("live_rooms.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    reaction_type: Mapped[str] = mapped_column(VARCHAR, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
 
 
 # ── potluck_social_events ────────────────────────────────────────────

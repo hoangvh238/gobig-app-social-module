@@ -24,6 +24,10 @@ celery_app.conf.update(
             "task": "tasks.flush_safety_events",
             "schedule": 60.0,
         },
+        "flush-live-reactions-every-30s": {
+            "task": "tasks.flush_live_reactions",
+            "schedule": 30.0,
+        },
     },
 )
 

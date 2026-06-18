@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class UserProfileResponse(BaseModel):
@@ -17,3 +17,11 @@ class UserProfileResponse(BaseModel):
 
 class AvatarUpdateRequest(BaseModel):
     url: str
+
+
+class StreakSyncRequest(BaseModel):
+    streak_count: int = Field(..., ge=0, description="Raw streak count — hashed server-side before storage")
+
+
+class StreakSyncResponse(BaseModel):
+    streak_hash: str
